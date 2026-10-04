@@ -13,8 +13,8 @@ class LoginScreen extends ConsumerStatefulWidget {
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _usernameController = TextEditingController(text: 'waiter01');
-  final _passwordController = TextEditingController(text: 'password');
+  final _usernameController = TextEditingController(text: '');
+  final _passwordController = TextEditingController(text: '');
   bool _obscurePassword = true;
   bool _remember = true;
 
@@ -27,7 +27,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
-    await ref.read(authControllerProvider.notifier).login(
+    await ref
+        .read(authControllerProvider.notifier)
+        .login(
           username: _usernameController.text.trim(),
           password: _passwordController.text,
           remember: _remember,
@@ -53,41 +55,77 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     CircleAvatar(
                       radius: 36,
                       backgroundColor: scheme.primaryContainer,
-                      child: Icon(Icons.local_dining, size: 38, color: scheme.onPrimaryContainer),
+                      child: Icon(
+                        Icons.local_dining,
+                        size: 38,
+                        color: scheme.onPrimaryContainer,
+                      ),
                     ),
                     const SizedBox(height: 18),
-                    Text(AppConfig.appName, textAlign: TextAlign.center, style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700)),
+                    Text(
+                      AppConfig.appName,
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.headlineSmall
+                          ?.copyWith(fontWeight: FontWeight.w700),
+                    ),
                     const SizedBox(height: 6),
-                    Text('Waiter order taking', textAlign: TextAlign.center, style: TextStyle(color: scheme.onSurfaceVariant)),
+                    Text(
+                      'Waiter order taking',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: scheme.onSurfaceVariant),
+                    ),
                     const SizedBox(height: 28),
                     TextFormField(
                       controller: _usernameController,
                       enabled: !auth.isLoading,
                       textInputAction: TextInputAction.next,
-                      decoration: const InputDecoration(prefixIcon: Icon(Icons.person_outline), labelText: 'User name'),
-                      validator: (value) => value == null || value.trim().isEmpty ? 'Enter your user name' : null,
+                      decoration: const InputDecoration(
+                        prefixIcon: Icon(Icons.person_outline),
+                        labelText: 'User name',
+                      ),
+                      validator: (value) =>
+                          value == null || value.trim().isEmpty
+                          ? 'Enter your user name'
+                          : null,
                     ),
                     const SizedBox(height: 14),
                     TextFormField(
                       controller: _passwordController,
                       enabled: !auth.isLoading,
                       obscureText: _obscurePassword,
-                      onFieldSubmitted: auth.isLoading ? null : (_) => _submit(),
+                      onFieldSubmitted: auth.isLoading
+                          ? null
+                          : (_) => _submit(),
                       decoration: InputDecoration(
                         prefixIcon: const Icon(Icons.lock_outline),
                         labelText: 'Password',
                         suffixIcon: IconButton(
-                          tooltip: _obscurePassword ? 'Show password' : 'Hide password',
-                          onPressed: auth.isLoading ? null : () => setState(() => _obscurePassword = !_obscurePassword),
-                          icon: Icon(_obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined),
+                          tooltip: _obscurePassword
+                              ? 'Show password'
+                              : 'Hide password',
+                          onPressed: auth.isLoading
+                              ? null
+                              : () => setState(
+                                  () => _obscurePassword = !_obscurePassword,
+                                ),
+                          icon: Icon(
+                            _obscurePassword
+                                ? Icons.visibility_outlined
+                                : Icons.visibility_off_outlined,
+                          ),
                         ),
                       ),
-                      validator: (value) => value == null || value.length < 4 ? 'Password is too short' : null,
+                      validator: (value) => value == null || value.length < 4
+                          ? 'Password is too short'
+                          : null,
                     ),
                     const SizedBox(height: 8),
                     CheckboxListTile(
                       value: _remember,
-                      onChanged: auth.isLoading ? null : (value) => setState(() => _remember = value ?? true),
+                      onChanged: auth.isLoading
+                          ? null
+                          : (value) =>
+                                setState(() => _remember = value ?? true),
                       contentPadding: EdgeInsets.zero,
                       controlAffinity: ListTileControlAffinity.leading,
                       title: const Text('Remember login'),
@@ -105,7 +143,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     FilledButton.icon(
                       onPressed: auth.isLoading ? null : _submit,
                       icon: auth.isLoading
-                          ? const SizedBox.square(dimension: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                          ? const SizedBox.square(
+                              dimension: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
                           : const Icon(Icons.login),
                       label: Text(auth.isLoading ? 'Signing in...' : 'Login'),
                     ),
@@ -154,12 +195,15 @@ class _LoginErrorPanel extends StatelessWidget {
                       Text(
                         'Login failed',
                         style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                              color: scheme.onErrorContainer,
-                              fontWeight: FontWeight.w800,
-                            ),
+                          color: scheme.onErrorContainer,
+                          fontWeight: FontWeight.w800,
+                        ),
                       ),
                       const SizedBox(height: 3),
-                      Text(message, style: TextStyle(color: scheme.onErrorContainer)),
+                      Text(
+                        message,
+                        style: TextStyle(color: scheme.onErrorContainer),
+                      ),
                     ],
                   ),
                 ),
@@ -168,7 +212,9 @@ class _LoginErrorPanel extends StatelessWidget {
           ),
           if (log != null && log!.isNotEmpty)
             Theme(
-              data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+              data: Theme.of(
+                context,
+              ).copyWith(dividerColor: Colors.transparent),
               child: ExpansionTile(
                 tilePadding: const EdgeInsets.symmetric(horizontal: 12),
                 childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
@@ -191,9 +237,9 @@ class _LoginErrorPanel extends StatelessWidget {
                     ),
                     child: SelectableText(
                       log!,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            fontFamily: 'monospace',
-                          ),
+                      style: Theme.of(
+                        context,
+                      ).textTheme.bodySmall?.copyWith(fontFamily: 'monospace'),
                     ),
                   ),
                 ],
