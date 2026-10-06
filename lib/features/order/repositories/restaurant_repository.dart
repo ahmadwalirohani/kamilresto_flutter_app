@@ -33,7 +33,8 @@ bool _matchesOrderLookup(Order order, String lookup) {
   if (order.id == lookup || order.orderNumber == lookup) return true;
   final lookupNo = _orderNoFromTextValue(lookup);
   if (lookupNo == null) return false;
-  return _orderNoFromTextValue(order.id) == lookupNo || _orderNoFromTextValue(order.orderNumber) == lookupNo;
+  return _orderNoFromTextValue(order.id) == lookupNo ||
+      _orderNoFromTextValue(order.orderNumber) == lookupNo;
 }
 
 int? _orderNoFromTextValue(String value) {
@@ -71,16 +72,81 @@ class MockRestaurantRepository implements RestaurantRepository {
   Future<List<Food>> getFoods() async {
     await Future<void>.delayed(const Duration(milliseconds: 350));
     return const [
-      Food(id: 'f1', name: 'Kabuli Pulao', description: 'Lamb, rice, carrots, raisins', categoryId: 'main', price: 14.5, isPopular: true),
-      Food(id: 'f2', name: 'Chicken Karahi', description: 'Tomato masala, fresh herbs', categoryId: 'main', price: 12.9, isPopular: true),
-      Food(id: 'f3', name: 'Margherita Pizza', description: 'Mozzarella, basil, tomato', categoryId: 'pizza', price: 10.5),
-      Food(id: 'f4', name: 'Beef Burger', description: 'House sauce, cheddar, pickles', categoryId: 'burger', price: 9.75, isPopular: true),
-      Food(id: 'f5', name: 'Omelette Plate', description: 'Eggs, herbs, warm bread', categoryId: 'breakfast', price: 6.25),
-      Food(id: 'f6', name: 'Fresh Orange Juice', description: 'Pressed to order', categoryId: 'drinks', price: 3.5),
-      Food(id: 'f7', name: 'Green Tea', description: 'Cardamom and mint', categoryId: 'drinks', price: 1.75),
-      Food(id: 'f8', name: 'Firni', description: 'Milk pudding, pistachio', categoryId: 'desserts', price: 4.25),
-      Food(id: 'f9', name: 'Mantu', description: 'Steamed dumplings, yogurt sauce', categoryId: 'main', price: 11.4, isPopular: true),
-      Food(id: 'f10', name: 'Chocolate Cake', description: 'Unavailable today', categoryId: 'desserts', price: 5.9, isAvailable: false),
+      Food(
+        id: 'f1',
+        name: 'Kabuli Pulao',
+        description: 'Lamb, rice, carrots, raisins',
+        categoryId: 'main',
+        price: 14.5,
+        isPopular: true,
+      ),
+      Food(
+        id: 'f2',
+        name: 'Chicken Karahi',
+        description: 'Tomato masala, fresh herbs',
+        categoryId: 'main',
+        price: 12.9,
+        isPopular: true,
+      ),
+      Food(
+        id: 'f3',
+        name: 'Margherita Pizza',
+        description: 'Mozzarella, basil, tomato',
+        categoryId: 'pizza',
+        price: 10.5,
+      ),
+      Food(
+        id: 'f4',
+        name: 'Beef Burger',
+        description: 'House sauce, cheddar, pickles',
+        categoryId: 'burger',
+        price: 9.75,
+        isPopular: true,
+      ),
+      Food(
+        id: 'f5',
+        name: 'Omelette Plate',
+        description: 'Eggs, herbs, warm bread',
+        categoryId: 'breakfast',
+        price: 6.25,
+      ),
+      Food(
+        id: 'f6',
+        name: 'Fresh Orange Juice',
+        description: 'Pressed to order',
+        categoryId: 'drinks',
+        price: 3.5,
+      ),
+      Food(
+        id: 'f7',
+        name: 'Green Tea',
+        description: 'Cardamom and mint',
+        categoryId: 'drinks',
+        price: 1.75,
+      ),
+      Food(
+        id: 'f8',
+        name: 'Firni',
+        description: 'Milk pudding, pistachio',
+        categoryId: 'desserts',
+        price: 4.25,
+      ),
+      Food(
+        id: 'f9',
+        name: 'Mantu',
+        description: 'Steamed dumplings, yogurt sauce',
+        categoryId: 'main',
+        price: 11.4,
+        isPopular: true,
+      ),
+      Food(
+        id: 'f10',
+        name: 'Chocolate Cake',
+        description: 'Unavailable today',
+        categoryId: 'desserts',
+        price: 5.9,
+        isAvailable: false,
+      ),
     ];
   }
 
@@ -132,9 +198,15 @@ class MockRestaurantRepository implements RestaurantRepository {
     );
     _orders.insert(0, order);
     _tables = _tables
-        .map((item) => item.id == table.id
-            ? item.copyWith(status: TableStatus.occupied, currentGuests: guestCount, hasActiveOrder: true)
-            : item)
+        .map(
+          (item) => item.id == table.id
+              ? item.copyWith(
+                  status: TableStatus.occupied,
+                  currentGuests: guestCount,
+                  hasActiveOrder: true,
+                )
+              : item,
+        )
         .toList();
     return order;
   }
@@ -148,7 +220,11 @@ class MockRestaurantRepository implements RestaurantRepository {
         id: 't$number',
         name: 'Table ${number.toString().padLeft(2, '0')}',
         number: number,
-        status: occupied ? TableStatus.occupied : reserved ? TableStatus.reserved : TableStatus.available,
+        status: occupied
+            ? TableStatus.occupied
+            : reserved
+            ? TableStatus.reserved
+            : TableStatus.available,
         capacity: [2, 4, 4, 6, 6, 8][index % 6],
         currentGuests: occupied ? 2 + Random(number).nextInt(4) : 0,
         hasActiveOrder: occupied,
@@ -159,16 +235,53 @@ class MockRestaurantRepository implements RestaurantRepository {
   List<Order> _seedOrders() {
     final now = DateTime.now();
     return [
-      _sampleOrder('o1', '#1042', 'Table 08', OrderStatus.preparing, now.subtract(const Duration(minutes: 18))),
-      _sampleOrder('o2', '#1041', 'Table 02', OrderStatus.ready, now.subtract(const Duration(minutes: 31))),
-      _sampleOrder('o3', '#1040', 'Table 11', OrderStatus.completed, now.subtract(const Duration(hours: 1, minutes: 12))),
+      _sampleOrder(
+        'o1',
+        '#1042',
+        'Table 08',
+        OrderStatus.preparing,
+        now.subtract(const Duration(minutes: 18)),
+      ),
+      _sampleOrder(
+        'o2',
+        '#1041',
+        'Table 02',
+        OrderStatus.ready,
+        now.subtract(const Duration(minutes: 31)),
+      ),
+      _sampleOrder(
+        'o3',
+        '#1040',
+        'Table 11',
+        OrderStatus.completed,
+        now.subtract(const Duration(hours: 1, minutes: 12)),
+      ),
     ];
   }
 
-  Order _sampleOrder(String id, String number, String table, OrderStatus status, DateTime time) {
+  Order _sampleOrder(
+    String id,
+    String number,
+    String table,
+    OrderStatus status,
+    DateTime time,
+  ) {
     const items = [
-      OrderItem(id: 'f1', foodId: 'f1', foodName: 'Kabuli Pulao', quantity: 2, unitPrice: 14.5),
-      OrderItem(id: 'f6', foodId: 'f6', foodName: 'Fresh Orange Juice', quantity: 4, unitPrice: 3.5, notes: 'No ice'),
+      OrderItem(
+        id: 'f1',
+        foodId: 'f1',
+        foodName: 'Kabuli Pulao',
+        quantity: 2,
+        unitPrice: 14.5,
+      ),
+      OrderItem(
+        id: 'f6',
+        foodId: 'f6',
+        foodName: 'Fresh Orange Juice',
+        quantity: 4,
+        unitPrice: 3.5,
+        notes: 'No ice',
+      ),
     ];
     return Order(
       id: id,
@@ -202,15 +315,15 @@ class ApiRestaurantRepository implements RestaurantRepository {
   @override
   Future<List<RestaurantTable>> getTables() async {
     try {
-      final response = await _dio.get<Map<String, dynamic>>('$_resourcePath/${_resourcePayload(
-        resourceClass: 'SettingsResources',
-        methodName: 'get_reservable_item_resource',
-      )}');
-      final tables = _extractList(response.data)
-          .where((item) => '${item['type'] ?? ''}'.toLowerCase().contains('table'))
-          .map(_tableFromReservableItem)
-          .toList()
-        ..sort((a, b) => a.number.compareTo(b.number));
+      final response = await _dio.get<Map<String, dynamic>>(
+        '$_resourcePath/${_resourcePayload(resourceClass: 'SettingsResources', methodName: 'get_reservable_item_resource')}',
+      );
+      final tables =
+          _extractList(response.data)
+              //  .where((item) => '${item['type'] ?? ''}'.toLowerCase().contains('table'))
+              .map(_tableFromReservableItem)
+              .toList()
+            ..sort((a, b) => a.number.compareTo(b.number));
       await _cacheTables(tables);
       return tables;
     } catch (error) {
@@ -223,10 +336,9 @@ class ApiRestaurantRepository implements RestaurantRepository {
   @override
   Future<List<FoodCategory>> getFoodCategories() async {
     try {
-      final response = await _dio.get<Map<String, dynamic>>('$_resourcePath/${_resourcePayload(
-        resourceClass: 'InventoryResources',
-        methodName: 'get_item_categories',
-      )}');
+      final response = await _dio.get<Map<String, dynamic>>(
+        '$_resourcePath/${_resourcePayload(resourceClass: 'InventoryResources', methodName: 'get_item_categories')}',
+      );
       final categories = [
         const FoodCategory(id: 'all', name: 'All'),
         ..._extractList(response.data)
@@ -245,15 +357,18 @@ class ApiRestaurantRepository implements RestaurantRepository {
   @override
   Future<List<Food>> getFoods() async {
     try {
-      final response = await _dio.get<Map<String, dynamic>>('$_resourcePath/${_resourcePayload(
-        resourceClass: 'InventoryResources',
-        methodName: 'get_saleable_item_resource',
-      )}');
-      final foods = _extractList(response.data)
-          .where((item) => item['type'] == 'food' || item['type'] == 'extra-item')
-          .map(_foodFromItem)
-          .toList()
-        ..sort((a, b) => a.name.compareTo(b.name));
+      final response = await _dio.get<Map<String, dynamic>>(
+        '$_resourcePath/${_resourcePayload(resourceClass: 'InventoryResources', methodName: 'get_saleable_item_resource')}',
+      );
+      final foods =
+          _extractList(response.data)
+              .where(
+                (item) =>
+                    item['type'] == 'food' || item['type'] == 'extra-item',
+              )
+              .map(_foodFromItem)
+              .toList()
+            ..sort((a, b) => a.name.compareTo(b.name));
       await _cacheFoods(foods);
       return foods;
     } catch (error) {
@@ -265,10 +380,9 @@ class ApiRestaurantRepository implements RestaurantRepository {
 
   @override
   Future<List<Order>> getOrders() async {
-    final response = await _dio.get<Map<String, dynamic>>('$_resourcePath/${_resourcePayload(
-      resourceClass: 'POSResources',
-      methodName: 'get_orders_of_counter',
-    )}');
+    final response = await _dio.get<Map<String, dynamic>>(
+      '$_resourcePath/${_resourcePayload(resourceClass: 'POSResources', methodName: 'get_orders_of_counter')}',
+    );
     return _extractList(response.data).map(_orderFromApi).toList();
   }
 
@@ -277,7 +391,9 @@ class ApiRestaurantRepository implements RestaurantRepository {
     final orders = await getOrders();
     return orders.firstWhere(
       (order) => _matchesOrderLookup(order, id),
-      orElse: () => throw const ApiException('Order was not found on the server. Refresh orders and try again.'),
+      orElse: () => throw const ApiException(
+        'Order was not found on the server. Refresh orders and try again.',
+      ),
     );
   }
 
@@ -291,10 +407,7 @@ class ApiRestaurantRepository implements RestaurantRepository {
           actionClass: 'POSActions',
           methodName: 'cancel_order',
           validationClass: '',
-          payload: {
-            'order_id': orderId,
-            'reason': reason,
-          },
+          payload: {'order_id': orderId, 'reason': reason},
         ),
       );
     } catch (error) {
@@ -327,7 +440,10 @@ class ApiRestaurantRepository implements RestaurantRepository {
 
   @override
   Future<Order> updateOrder(Order order) async {
-    final orderId = await _resolveOrderDatabaseId(order.id, orderNumber: order.orderNumber);
+    final orderId = await _resolveOrderDatabaseId(
+      order.id,
+      orderNumber: order.orderNumber,
+    );
     try {
       await _dio.post<dynamic>(
         _actionPath,
@@ -337,11 +453,17 @@ class ApiRestaurantRepository implements RestaurantRepository {
           validationClass: 'CreateOrderRequest',
           payload: {
             'id': orderId,
-            'order_id': int.tryParse(order.orderNumber.replaceAll(RegExp(r'[^0-9]'), '')) ?? order.orderNumber,
+            'order_id':
+                int.tryParse(
+                  order.orderNumber.replaceAll(RegExp(r'[^0-9]'), ''),
+                ) ??
+                order.orderNumber,
             'r_items': [
               {'id': int.tryParse(order.tableId) ?? order.tableId, 'price': 0},
             ],
-            'selected_items': order.items.map(_apiOrderItemFromOrderItem).toList(),
+            'selected_items': order.items
+                .map(_apiOrderItemFromOrderItem)
+                .toList(),
             'count_of_person': order.guestCount,
             'is_walkin': true,
             'customer': 'Walk-in',
@@ -350,7 +472,10 @@ class ApiRestaurantRepository implements RestaurantRepository {
             'is_pick_order': false,
             'phone': '',
             'address': '',
-            'total_amount': order.items.fold<double>(0, (sum, item) => sum + item.total),
+            'total_amount': order.items.fold<double>(
+              0,
+              (sum, item) => sum + item.total,
+            ),
           },
         ),
       );
@@ -390,7 +515,10 @@ class ApiRestaurantRepository implements RestaurantRepository {
           'is_pick_order': false,
           'phone': '',
           'address': '',
-          'total_amount': items.fold<double>(0, (sum, item) => sum + item.total),
+          'total_amount': items.fold<double>(
+            0,
+            (sum, item) => sum + item.total,
+          ),
         },
       ),
     );
@@ -415,11 +543,7 @@ class ApiRestaurantRepository implements RestaurantRepository {
     return {
       'id': int.tryParse(item.foodId) ?? item.foodId,
       'quantity': item.quantity,
-      'price': {
-        'price': item.unitPrice,
-        'profit': 0,
-        'cost_price': 0,
-      },
+      'price': {'price': item.unitPrice, 'profit': 0, 'cost_price': 0},
       'ingredients': <Map<String, dynamic>>[],
     };
   }
@@ -433,12 +557,15 @@ class ApiRestaurantRepository implements RestaurantRepository {
     for (final order in orders) {
       final databaseId = int.tryParse(order.id);
       if (databaseId == null) continue;
-      if (order.id == id || _orderNoFromText(order.orderNumber) == requestedOrderNo) {
+      if (order.id == id ||
+          _orderNoFromText(order.orderNumber) == requestedOrderNo) {
         return databaseId;
       }
     }
 
-    throw const ApiException('Order was not found on the server. Refresh orders and try again.');
+    throw const ApiException(
+      'Order was not found on the server. Refresh orders and try again.',
+    );
   }
 
   int? _orderNoFromText(String value) {
@@ -448,14 +575,26 @@ class ApiRestaurantRepository implements RestaurantRepository {
   }
 
   Order _orderFromApi(Map<String, dynamic> item) {
-    final details = item['details'] is List ? item['details'] as List : const [];
+    final details = item['details'] is List
+        ? item['details'] as List
+        : const [];
     final rItems = item['r_items'] is List ? item['r_items'] as List : const [];
-    final table = rItems.whereType<Map>().isNotEmpty ? Map<String, dynamic>.from(rItems.whereType<Map>().first) : <String, dynamic>{};
-    final reservable = table['reservable_item'] is Map ? Map<String, dynamic>.from(table['reservable_item'] as Map) : <String, dynamic>{};
+    final table = rItems.whereType<Map>().isNotEmpty
+        ? Map<String, dynamic>.from(rItems.whereType<Map>().first)
+        : <String, dynamic>{};
+    final reservationItem = table['r_item'] ?? table['reservable_item'];
+    final reservable = reservationItem is Map
+        ? Map<String, dynamic>.from(reservationItem)
+        : <String, dynamic>{};
     final tableName = reservable['name'] as String? ?? 'Table';
-    final serialNo = reservable['serial_no'] == null ? '' : '${reservable['serial_no']}';
-    final createdAt = DateTime.tryParse('${item['created_at'] ?? ''}') ?? DateTime.now();
-    final user = item['user'] is Map ? Map<String, dynamic>.from(item['user'] as Map) : <String, dynamic>{};
+    final serialNo = reservable['serial_no'] == null
+        ? ''
+        : '${reservable['serial_no']}'.trim();
+    final createdAt =
+        DateTime.tryParse('${item['created_at'] ?? ''}') ?? DateTime.now();
+    final user = item['user'] is Map
+        ? Map<String, dynamic>.from(item['user'] as Map)
+        : <String, dynamic>{};
     return Order(
       id: '${item['id']}',
       orderNumber: '#${item['order_no'] ?? item['id']}',
@@ -464,7 +603,10 @@ class ApiRestaurantRepository implements RestaurantRepository {
       waiterId: '${user['id'] ?? item['created_user_id'] ?? ''}',
       waiterName: user['name'] as String? ?? 'Waiter',
       guestCount: int.tryParse('${item['count_of_person'] ?? 1}') ?? 1,
-      items: details.whereType<Map>().map((detail) => _orderItemFromApi(Map<String, dynamic>.from(detail))).toList(),
+      items: details
+          .whereType<Map>()
+          .map((detail) => _orderItemFromApi(Map<String, dynamic>.from(detail)))
+          .toList(),
       status: _orderStatusFromApi(item),
       notes: item['remarks'] as String? ?? '',
       createdAt: createdAt,
@@ -473,14 +615,19 @@ class ApiRestaurantRepository implements RestaurantRepository {
   }
 
   OrderItem _orderItemFromApi(Map<String, dynamic> detail) {
-    final item = detail['item'] is Map ? Map<String, dynamic>.from(detail['item'] as Map) : <String, dynamic>{};
-    final price = item['price'] is Map ? Map<String, dynamic>.from(item['price'] as Map) : <String, dynamic>{};
+    final item = detail['item'] is Map
+        ? Map<String, dynamic>.from(detail['item'] as Map)
+        : <String, dynamic>{};
+    final price = item['price'] is Map
+        ? Map<String, dynamic>.from(item['price'] as Map)
+        : <String, dynamic>{};
     return OrderItem(
       id: '${detail['id']}',
       foodId: '${detail['item_id'] ?? item['id'] ?? ''}',
       foodName: item['name'] as String? ?? 'Item',
       quantity: int.tryParse('${detail['quantity'] ?? 1}') ?? 1,
-      unitPrice: double.tryParse('${detail['price'] ?? price['price'] ?? 0}') ?? 0,
+      unitPrice:
+          double.tryParse('${detail['price'] ?? price['price'] ?? 0}') ?? 0,
       image: item['image'] as String?,
     );
   }
@@ -495,13 +642,13 @@ class ApiRestaurantRepository implements RestaurantRepository {
 
   Future<int> _nextOrderNumber() async {
     try {
-      final response = await _dio.get<Map<String, dynamic>>('$_resourcePath/${_resourcePayload(
-        resourceClass: 'SettingsResources',
-        methodName: 'get_system_info',
-      )}');
+      final response = await _dio.get<Map<String, dynamic>>(
+        '$_resourcePath/${_resourcePayload(resourceClass: 'SettingsResources', methodName: 'get_system_info')}',
+      );
       final data = response.data?['data'];
       if (data is Map) {
-        return int.tryParse('${data['order_no']}') ?? DateTime.now().millisecondsSinceEpoch;
+        return int.tryParse('${data['order_no']}') ??
+            DateTime.now().millisecondsSinceEpoch;
       }
     } catch (_) {
       // Saving the order should still proceed if numbering lookup is unavailable.
@@ -537,7 +684,10 @@ class ApiRestaurantRepository implements RestaurantRepository {
   List<Map<String, dynamic>> _extractList(Map<String, dynamic>? response) {
     final body = response ?? {};
     final rawItems = body['data'] is List ? body['data'] as List : const [];
-    return rawItems.whereType<Map>().map((item) => Map<String, dynamic>.from(item)).toList();
+    return rawItems
+        .whereType<Map>()
+        .map((item) => Map<String, dynamic>.from(item))
+        .toList();
   }
 
   FoodCategory _categoryFromItemCategory(Map<String, dynamic> item) {
@@ -548,11 +698,15 @@ class ApiRestaurantRepository implements RestaurantRepository {
   }
 
   Food _foodFromItem(Map<String, dynamic> item) {
-    final category = item['category'] is Map ? Map<String, dynamic>.from(item['category'] as Map) : null;
+    final category = item['category'] is Map
+        ? Map<String, dynamic>.from(item['category'] as Map)
+        : null;
     return Food(
       id: '${item['id']}',
       name: item['name'] as String? ?? 'Food item',
-      description: item['code'] == null ? '${item['type'] ?? ''}' : 'Code ${item['code']}',
+      description: item['code'] == null
+          ? '${item['type'] ?? ''}'
+          : 'Code ${item['code']}',
       categoryId: '${item['category_id'] ?? category?['id'] ?? ''}',
       price: _priceFromItem(item),
       image: item['image'] as String?,
@@ -564,7 +718,8 @@ class ApiRestaurantRepository implements RestaurantRepository {
   double _priceFromItem(Map<String, dynamic> item) {
     final price = item['price'];
     if (price is Map) {
-      final discounted = double.tryParse('${price['discounted_price'] ?? 0}') ?? 0;
+      final discounted =
+          double.tryParse('${price['discounted_price'] ?? 0}') ?? 0;
       if (discounted > 0) return discounted;
       return double.tryParse('${price['price'] ?? 0}') ?? 0;
     }
@@ -576,12 +731,16 @@ class ApiRestaurantRepository implements RestaurantRepository {
     if (value is bool) return value;
     if (value is num) return value != 0;
     final text = '$value'.toLowerCase();
-    return text == '1' || text == 'true' || text == 'active' || text == 'available';
+    return text == '1' ||
+        text == 'true' ||
+        text == 'active' ||
+        text == 'available';
   }
 
   RestaurantTable _tableFromReservableItem(Map<String, dynamic> item) {
     final serial = '${item['serial_no'] ?? item['id'] ?? ''}';
-    final number = int.tryParse(serial.replaceAll(RegExp(r'[^0-9]'), '')) ??
+    final number =
+        int.tryParse(serial.replaceAll(RegExp(r'[^0-9]'), '')) ??
         int.tryParse('${item['id']}') ??
         0;
     final status = _tableStatusFromReservableStatus('${item['status'] ?? ''}');
@@ -633,7 +792,9 @@ class ApiRestaurantRepository implements RestaurantRepository {
       if (decoded is! List) return const [];
       return decoded
           .whereType<Map>()
-          .map((item) => RestaurantTable.fromJson(Map<String, dynamic>.from(item)))
+          .map(
+            (item) => RestaurantTable.fromJson(Map<String, dynamic>.from(item)),
+          )
           .toList();
     } catch (_) {
       return const [];

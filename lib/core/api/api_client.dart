@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../constants/app_config.dart';
+import '../logging/app_logger.dart';
 
 final apiTokenProvider = StateProvider<String?>((ref) => null);
 
@@ -11,13 +12,17 @@ final dioProvider = Provider<Dio>((ref) {
       baseUrl: AppConfig.apiBaseUrl,
       connectTimeout: const Duration(seconds: 12),
       receiveTimeout: const Duration(seconds: 12),
-      headers: {'Accept': 'application/json', 'Content-Type': 'application/json'},
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+      },
     ),
   );
 
   dio.interceptors.add(
     InterceptorsWrapper(
       onRequest: (options, handler) {
+        options.extra['logStartedAt'] = DateTime.now();
         final token = ref.read(apiTokenProvider);
         if (token != null && token.isNotEmpty) {
           options.headers['Authorization'] = 'Bearer $token';
@@ -25,6 +30,28 @@ final dioProvider = Provider<Dio>((ref) {
         handler.next(options);
       },
       onError: (error, handler) {
+        final started = error.requestOptions.extra['logStartedAt'];
+        AppLogger.write(
+          'api',
+          'API request failed',
+          error: error,
+          stackTrace: error.stackTrace,
+          details: {
+            'method': error.requestOptions.method,
+            'url': error.requestOptions.uri.toString(),
+            'query': error.requestOptions.queryParameters,
+            'requestHeaders': error.requestOptions.headers,
+            'requestBody': error.requestOptions.data,
+            'statusCode': error.response?.statusCode,
+            'responseHeaders': error.response?.headers.map,
+            'responseBody': error.response?.data,
+            'dioType': error.type.name,
+            'cause': error.error?.toString(),
+            'elapsedMs': started is DateTime
+                ? DateTime.now().difference(started).inMilliseconds
+                : null,
+          },
+        );
         if (error.response?.statusCode == 401) {
           ref.read(apiTokenProvider.notifier).state = null;
         }
@@ -46,6 +73,14 @@ class ApiException implements Exception {
 }
 
 String readableApiError(Object error) {
+  if (error is! DioException) {
+    AppLogger.write(
+      'application',
+      'Handled application error',
+      error: error,
+      stackTrace: StackTrace.current,
+    );
+  }
   if (error is ApiException) return error.message;
   if (error is DioException) {
     final status = error.response?.statusCode;
@@ -53,7 +88,9 @@ String readableApiError(Object error) {
     if (data is Map<String, dynamic> && data['message'] is String) {
       return data['message'] as String;
     }
-    if (status == 422 && data is Map<String, dynamic> && data['errors'] is Map) {
+    if (status == 422 &&
+        data is Map<String, dynamic> &&
+        data['errors'] is Map) {
       final errors = data['errors'] as Map;
       for (final messages in errors.values) {
         if (messages is List) {
@@ -85,7 +122,9 @@ String detailedApiError(Object error, [StackTrace? stackTrace]) {
     return '$value\n\nstackTrace:\n$stackTrace';
   }
 
-  if (error is ApiException) return appendStack('ApiException: ${error.message}');
+  if (error is ApiException) {
+    return appendStack('ApiException: ${error.message}');
+  }
   if (error is DioException) {
     final buffer = StringBuffer()
       ..writeln('DioException')
@@ -102,7 +141,7 @@ String detailedApiError(Object error, [StackTrace? stackTrace]) {
     final responseData = error.response?.data;
     if (responseData != null) buffer.writeln('response: $responseData');
     final dioStackTrace = error.stackTrace;
-    if (dioStackTrace != null) buffer.writeln('dioStackTrace: $dioStackTrace');
+    buffer.writeln('dioStackTrace: $dioStackTrace');
     return appendStack(buffer.toString().trim());
   }
   return appendStack('${error.runtimeType}: $error');

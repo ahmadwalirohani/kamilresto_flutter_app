@@ -262,7 +262,7 @@ class _OrderCard extends ConsumerWidget {
                         children: [
                           Text(
                             order.tableName.isEmpty ? 'Table ${order.tableId}' : order.tableName,
-                            maxLines: 1,
+                            maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                             style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
                           ),
