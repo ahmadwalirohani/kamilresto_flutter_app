@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'edit_order_dialog.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -209,11 +210,11 @@ class _OrderActions extends ConsumerWidget {
   Future<void> _editOrder(BuildContext context, WidgetRef ref, Order order) async {
     final edited = await showDialog<Order>(
       context: context,
-      builder: (context) => _EditOrderDialog(order: order),
+      barrierDismissible: false,
+      builder: (context) => EditOrderDialog(order: order),
     );
     if (edited == null) return;
     try {
-      await ref.read(restaurantRepositoryProvider).updateOrder(edited);
       ref.invalidate(ordersProvider);
       ref.invalidate(orderByIdProvider(order.id));
       if (context.mounted) {
@@ -268,90 +269,6 @@ class _CancelOrderDialogState extends State<_CancelOrderDialog> {
   }
 }
 
-class _EditOrderDialog extends StatefulWidget {
-  const _EditOrderDialog({required this.order});
-
-  final Order order;
-
-  @override
-  State<_EditOrderDialog> createState() => _EditOrderDialogState();
-}
-
-class _EditOrderDialogState extends State<_EditOrderDialog> {
-  late List<OrderItem> _items;
-
-  @override
-  void initState() {
-    super.initState();
-    _items = [...widget.order.items];
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final editedOrder = widget.order.copyWith(items: _items);
-    return AlertDialog(
-      title: Text('Edit ${widget.order.orderNumber}'),
-      content: SizedBox(
-        width: 520,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            SizedBox(
-              height: 260,
-              child: ListView.separated(
-                itemCount: _items.length,
-                separatorBuilder: (_, _) => const Divider(height: 1),
-                itemBuilder: (context, index) {
-                  final item = _items[index];
-                  return ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: Text(item.foodName),
-                    subtitle: MoneyText(item.unitPrice),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton(
-                          onPressed: () => _changeQuantity(index, -1),
-                          icon: const Icon(Icons.remove),
-                        ),
-                        SizedBox(width: 32, child: Center(child: Text('${item.quantity}'))),
-                        IconButton(
-                          onPressed: () => _changeQuantity(index, 1),
-                          icon: const Icon(Icons.add),
-                        ),
-                      ],
-                    ),
-                  );
-                },
-              ),
-            ),
-            const Divider(),
-            _MoneyRow(label: 'Total', value: editedOrder.total, prominent: true),
-          ],
-        ),
-      ),
-      actions: [
-        TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Close')),
-        FilledButton(
-          onPressed: _items.isEmpty ? null : () => Navigator.of(context).pop(editedOrder),
-          child: const Text('Save Changes'),
-        ),
-      ],
-    );
-  }
-
-  void _changeQuantity(int index, int delta) {
-    setState(() {
-      final item = _items[index];
-      final quantity = item.quantity + delta;
-      if (quantity <= 0) {
-        _items.removeAt(index);
-      } else {
-        _items[index] = item.copyWith(quantity: quantity);
-      }
-    });
-  }
-}
 
 class _DetailRow extends StatelessWidget {
   const _DetailRow({required this.label, required this.value});

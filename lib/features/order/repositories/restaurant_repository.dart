@@ -635,8 +635,9 @@ class ApiRestaurantRepository implements RestaurantRepository {
   OrderStatus _orderStatusFromApi(Map<String, dynamic> item) {
     if (_isActive(item['is_rejected'])) return OrderStatus.cancelled;
     final status = int.tryParse('${item['status'] ?? 0}') ?? 0;
-    // API order status: 0 = pending, 2 = ready.
-    if (status == 2) return OrderStatus.ready;
+    // API order status: 0 = pending, 1 = ready, 2 = completed.
+    if (status == 1) return OrderStatus.ready;
+    if (status == 2) return OrderStatus.completed;
     return OrderStatus.newOrder;
   }
 
