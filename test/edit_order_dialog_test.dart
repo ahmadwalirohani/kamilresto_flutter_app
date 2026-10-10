@@ -12,7 +12,15 @@ import 'package:kamilresto_flutter_app/features/orders/presentation/edit_order_d
 
 class _Repository extends MockRestaurantRepository {
   Order? saved;
+  late Order initial;
+  int detailRequests = 0;
   Completer<Order> response = Completer<Order>();
+
+  @override
+  Future<Order> getOrderById(String id) async {
+    detailRequests++;
+    return saved ?? initial;
+  }
 
   @override
   Future<Order> updateOrder(Order order) {
@@ -58,11 +66,18 @@ void main() {
       createdAt: DateTime(2026),
       updatedAt: DateTime(2026),
     );
+    repository.initial = order;
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
           restaurantRepositoryProvider.overrideWithValue(repository),
           foodsProvider.overrideWith((ref) async => [food]),
+          categoriesProvider.overrideWith(
+            (ref) async => [
+              const FoodCategory(id: '1', name: 'Soups'),
+              const FoodCategory(id: '2', name: 'Drinks'),
+            ],
+          ),
         ],
         child: MaterialApp(
           home: Builder(
@@ -79,13 +94,32 @@ void main() {
         ),
       ),
     );
+    final container = ProviderScope.containerOf(tester.element(find.text('Edit')));
+    final details = container.listen(orderByIdProvider('#10'), (_, _) {});
+    addTearDown(details.close);
+    expect((await container.read(orderByIdProvider('#10').future)).items.single.foodName, 'Rice');
     await tester.tap(find.text('Edit'));
+    await tester.pumpAndSettle();
+    expect(find.byIcon(Icons.lunch_dining_outlined), findsNWidgets(2));
+    await tester.tap(find.text('Drinks'));
+    await tester.pumpAndSettle();
+    expect(find.byTooltip('Add Soup'), findsNothing);
+    await tester.tap(find.text('Soups'));
     await tester.pumpAndSettle();
     await tester.tap(find.byTooltip('Add Soup'));
     await tester.pump();
     await tester.tap(find.byTooltip('Add Soup'));
     await tester.pump();
     await tester.tap(find.byTooltip('Remove item').first);
+    await tester.pumpAndSettle();
+    expect(find.text('Remove Rice from this order?'), findsOneWidget);
+    await tester.tap(find.text('Keep Item'));
+    await tester.pumpAndSettle();
+    expect(find.text('Rice'), findsOneWidget);
+    await tester.tap(find.byTooltip('Remove item').first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Remove'));
+    await tester.pumpAndSettle();
     await tester.pump();
     expect(find.text('Rice'), findsNothing);
     await tester.tap(find.text('Save Changes'));
@@ -103,5 +137,9 @@ void main() {
     repository.response.complete(repository.saved!);
     await tester.pumpAndSettle();
     expect(find.byType(EditOrderDialog), findsNothing);
+    final refreshed = await container.read(orderByIdProvider('#10').future);
+    expect(refreshed.items.single.foodName, 'Soup');
+    expect(refreshed.items.single.quantity, 2);
+    expect(repository.detailRequests, 2);
   });
 }

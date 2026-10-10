@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/api/api_client.dart';
@@ -142,7 +144,9 @@ final ordersProvider = FutureProvider<List<Order>>((ref) {
   return ref.watch(restaurantRepositoryProvider).getOrders();
 });
 
-final orderByIdProvider = FutureProvider.family<Order, String>((ref, id) {
+final orderByIdProvider = FutureProvider.autoDispose.family<Order, String>((ref, id) {
+  final timer = Timer(const Duration(seconds: 15), ref.invalidateSelf);
+  ref.onDispose(timer.cancel);
   return ref.watch(restaurantRepositoryProvider).getOrderById(id);
 });
 

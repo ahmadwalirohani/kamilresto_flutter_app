@@ -18,6 +18,7 @@ class EditOrderDialog extends ConsumerStatefulWidget {
 class _EditOrderDialogState extends ConsumerState<EditOrderDialog> {
   late List<OrderItem> _items;
   String _search = '';
+  String? _categoryId;
   bool _saving = false;
   String? _error;
 
@@ -41,6 +42,10 @@ class _EditOrderDialogState extends ConsumerState<EditOrderDialog> {
   }
 
   void _change(int index, int delta) {
+    if (_items[index].quantity + delta <= 0) {
+      _remove(_items[index]);
+      return;
+    }
     setState(() {
       final quantity = _items[index].quantity + delta;
       if (quantity <= 0) {
@@ -49,6 +54,23 @@ class _EditOrderDialogState extends ConsumerState<EditOrderDialog> {
         _items[index] = _items[index].copyWith(quantity: quantity);
       }
     });
+  }
+
+  Future<void> _remove(OrderItem item) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Remove item?'),
+        content: Text('Remove ${item.foodName} from this order?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Keep Item')),
+          FilledButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Remove')),
+        ],
+      ),
+    );
+    if (confirmed == true && mounted && !_saving) {
+      setState(() => _items.remove(item));
+    }
   }
 
   Future<void> _save() async {
@@ -62,7 +84,7 @@ class _EditOrderDialogState extends ConsumerState<EditOrderDialog> {
           .read(restaurantRepositoryProvider)
           .updateOrder(widget.order.copyWith(items: [..._items]));
       ref.invalidate(ordersProvider);
-      ref.invalidate(orderByIdProvider(widget.order.id));
+      ref.invalidate(orderByIdProvider);
       if (mounted) Navigator.of(context).pop(updated);
     } catch (error) {
       if (mounted) setState(() => _error = readableApiError(error));
@@ -83,9 +105,17 @@ class _EditOrderDialogState extends ConsumerState<EditOrderDialog> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    item.foodName,
-                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  Row(
+                    children: [
+                      _MenuImage(image: item.image),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          item.foodName,
+                          style: const TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                    ],
                   ),
                   Row(
                     children: [
@@ -108,7 +138,7 @@ class _EditOrderDialogState extends ConsumerState<EditOrderDialog> {
                         tooltip: 'Remove item',
                         onPressed: _saving
                             ? null
-                            : () => setState(() => _items.removeAt(index)),
+                            : () => _remove(item),
                         icon: const Icon(Icons.delete_outline),
                       ),
                     ],
@@ -130,6 +160,45 @@ class _EditOrderDialogState extends ConsumerState<EditOrderDialog> {
           prefixIcon: Icon(Icons.search),
         ),
       ),
+      const SizedBox(height: 8),
+      ref
+          .watch(categoriesProvider)
+          .when(
+            loading: () => const LinearProgressIndicator(),
+            error: (_, _) => Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                onPressed: () => ref.invalidate(categoriesProvider),
+                icon: const Icon(Icons.refresh),
+                label: const Text('Retry categories'),
+              ),
+            ),
+            data: (categories) => SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  ChoiceChip(
+                    label: const Text('All'),
+                    selected: _categoryId == null,
+                    onSelected: _saving
+                        ? null
+                        : (_) => setState(() => _categoryId = null),
+                  ),
+                  for (final category in categories)
+                    Padding(
+                      padding: const EdgeInsets.only(left: 8),
+                      child: ChoiceChip(
+                        label: Text(category.name),
+                        selected: _categoryId == category.id,
+                        onSelected: _saving
+                            ? null
+                            : (_) => setState(() => _categoryId = category.id),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
       const SizedBox(height: 8),
       Expanded(
         child: ref
@@ -154,6 +223,8 @@ class _EditOrderDialogState extends ConsumerState<EditOrderDialog> {
                     .where(
                       (food) =>
                           food.isAvailable &&
+                          (_categoryId == null ||
+                              food.categoryId == _categoryId) &&
                           food.name.toLowerCase().contains(_search),
                     )
                     .toList();
@@ -166,6 +237,7 @@ class _EditOrderDialogState extends ConsumerState<EditOrderDialog> {
                     final food = filtered[index];
                     return ListTile(
                       contentPadding: EdgeInsets.zero,
+                      leading: _MenuImage(image: food.image),
                       title: Text(food.name),
                       subtitle: MoneyText(food.price),
                       trailing: IconButton(
@@ -260,6 +332,33 @@ class _EditOrderDialogState extends ConsumerState<EditOrderDialog> {
             label: Text(_saving ? 'Saving...' : 'Save Changes'),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _MenuImage extends StatelessWidget {
+  const _MenuImage({required this.image});
+  final String? image;
+
+  @override
+  Widget build(BuildContext context) {
+    final placeholder = ColoredBox(
+      color: Theme.of(context).colorScheme.surfaceContainerHighest,
+      child: const Center(child: Icon(Icons.lunch_dining_outlined)),
+    );
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(6),
+      child: SizedBox(
+        width: 48,
+        height: 48,
+        child: image == null || image!.isEmpty
+            ? placeholder
+            : Image.network(
+                image!,
+                fit: BoxFit.cover,
+                errorBuilder: (_, _, _) => placeholder,
+              ),
       ),
     );
   }

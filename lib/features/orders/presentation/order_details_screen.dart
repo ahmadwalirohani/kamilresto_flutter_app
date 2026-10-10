@@ -25,6 +25,13 @@ class OrderDetailsScreen extends ConsumerWidget {
           icon: const Icon(Icons.arrow_back),
         ),
         title: const Text('Order Details'),
+        actions: [
+          IconButton(
+            tooltip: 'Refresh order',
+            onPressed: () => ref.invalidate(orderByIdProvider(orderId)),
+            icon: const Icon(Icons.refresh),
+          ),
+        ],
       ),
       body: order.when(
         data: (value) => ListView(
@@ -38,7 +45,7 @@ class OrderDetailsScreen extends ConsumerWidget {
                   _DetailRow(label: 'Table', value: value.tableName),
                   _DetailRow(label: 'Waiter', value: value.waiterName),
                   _DetailRow(label: 'Guests', value: '${value.guestCount}'),
-                  _DetailRow(label: 'Time', value: TimeOfDay.fromDateTime(value.createdAt).format(context)),
+                  _DetailRow(label: 'Date & Time', value: '${MaterialLocalizations.of(context).formatMediumDate(value.createdAt.toLocal())} ${TimeOfDay.fromDateTime(value.createdAt.toLocal()).format(context)}'),
                 ],
               ),
             ),
@@ -66,7 +73,10 @@ class OrderDetailsScreen extends ConsumerWidget {
             _OrderActions(order: value),
           ],
         ),
-        error: (_, _) => ErrorView(message: 'Could not load this order.', onRetry: () => ref.invalidate(orderByIdProvider(orderId))),
+        error: (_, _) => ErrorView(
+          message: 'Could not load this order.',
+          onRetry: () => ref.invalidate(orderByIdProvider(orderId)),
+        ),
         loading: () => const LoadingView(message: 'Loading order'),
       ),
     );
@@ -174,7 +184,7 @@ class _OrderActions extends ConsumerWidget {
     try {
       await ref.read(restaurantRepositoryProvider).markOrderReady(order.id);
       ref.invalidate(ordersProvider);
-      ref.invalidate(orderByIdProvider(order.id));
+      ref.invalidate(orderByIdProvider);
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Order marked ready.')));
         context.go('/orders');

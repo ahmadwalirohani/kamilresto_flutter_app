@@ -326,7 +326,8 @@ class _OrderCardActionsState extends ConsumerState<_OrderCardActions> {
   @override
   Widget build(BuildContext context) {
     final order = widget.order;
-    final isClosed = order.status == OrderStatus.cancelled || order.status == OrderStatus.ready || order.status == OrderStatus.completed;
+    final isReady = order.status == OrderStatus.ready;
+    final isClosed = order.status == OrderStatus.cancelled || order.status == OrderStatus.completed;
     final isBusy = _busyAction != null;
     return Row(
       children: [
@@ -337,6 +338,7 @@ class _OrderCardActionsState extends ConsumerState<_OrderCardActions> {
             label: const Text('Edit'),
           ),
         ),
+        if (!isReady) ...[
         const SizedBox(width: 6),
         Expanded(
           child: OutlinedButton.icon(
@@ -353,6 +355,7 @@ class _OrderCardActionsState extends ConsumerState<_OrderCardActions> {
             label: const Text('Ready'),
           ),
         ),
+        ],
       ],
     );
   }

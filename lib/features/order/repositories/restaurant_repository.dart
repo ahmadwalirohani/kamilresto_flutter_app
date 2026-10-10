@@ -382,6 +382,8 @@ class ApiRestaurantRepository implements RestaurantRepository {
   Future<List<Order>> getOrders() async {
     final response = await _dio.get<Map<String, dynamic>>(
       '$_resourcePath/${_resourcePayload(resourceClass: 'POSResources', methodName: 'get_orders_of_counter')}',
+      queryParameters: {'_fresh': DateTime.now().microsecondsSinceEpoch},
+      options: Options(headers: {'Cache-Control': 'no-cache, no-store', 'Pragma': 'no-cache'}),
     );
     return _extractList(response.data).map(_orderFromApi).toList();
   }
@@ -389,6 +391,10 @@ class ApiRestaurantRepository implements RestaurantRepository {
   @override
   Future<Order> getOrderById(String id) async {
     final orders = await getOrders();
+    // Database IDs and order numbers can overlap. Prefer the exact ID.
+    for (final order in orders) {
+      if (order.id == id) return order;
+    }
     return orders.firstWhere(
       (order) => _matchesOrderLookup(order, id),
       orElse: () => throw const ApiException(
@@ -482,7 +488,15 @@ class ApiRestaurantRepository implements RestaurantRepository {
     } catch (error) {
       throw ApiException(readableApiError(error));
     }
-    return order.copyWith(updatedAt: DateTime.now());
+    final saved = await getOrderById('$orderId');
+    final quantities = {for (final item in saved.items) item.foodId: item.quantity};
+    if (saved.items.length != order.items.length ||
+        order.items.any((item) => quantities[item.foodId] != item.quantity)) {
+      throw const ApiException(
+        'The server returned different item quantities. Refresh the order and try again.',
+      );
+    }
+    return saved;
   }
 
   @override
@@ -591,7 +605,7 @@ class ApiRestaurantRepository implements RestaurantRepository {
         ? ''
         : '${reservable['serial_no']}'.trim();
     final createdAt =
-        DateTime.tryParse('${item['created_at'] ?? ''}') ?? DateTime.now();
+        DateTime.tryParse('${item['created_at'] ?? ''}')?.toLocal() ?? DateTime.now();
     final user = item['user'] is Map
         ? Map<String, dynamic>.from(item['user'] as Map)
         : <String, dynamic>{};
@@ -610,7 +624,7 @@ class ApiRestaurantRepository implements RestaurantRepository {
       status: _orderStatusFromApi(item),
       notes: item['remarks'] as String? ?? '',
       createdAt: createdAt,
-      updatedAt: DateTime.tryParse('${item['updated_at'] ?? ''}') ?? createdAt,
+      updatedAt: DateTime.tryParse('${item['updated_at'] ?? ''}')?.toLocal() ?? createdAt,
     );
   }
 
@@ -625,7 +639,7 @@ class ApiRestaurantRepository implements RestaurantRepository {
       id: '${detail['id']}',
       foodId: '${detail['item_id'] ?? item['id'] ?? ''}',
       foodName: item['name'] as String? ?? 'Item',
-      quantity: int.tryParse('${detail['quantity'] ?? 1}') ?? 1,
+      quantity: num.tryParse('${detail['quantity'] ?? 1}')?.toInt() ?? 1,
       unitPrice:
           double.tryParse('${detail['price'] ?? price['price'] ?? 0}') ?? 0,
       image: item['image'] as String?,
