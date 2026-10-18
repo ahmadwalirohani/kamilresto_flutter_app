@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/widgets/logs_button.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/constants/app_config.dart';
@@ -34,6 +35,7 @@ class TakeOrderScreen extends ConsumerWidget {
       appBar: AppBar(
         title: Text(order.selectedTable?.name ?? AppConfig.appName),
         actions: [
+          const LogsButton(),
           const _SavePreviewButton(),
           if (user != null)
             PopupMenuButton<String>(
@@ -74,16 +76,30 @@ class _TabletOrderLayout extends StatelessWidget {
   }
 }
 
-class _SavePreviewButton extends ConsumerWidget {
+class _SavePreviewButton extends ConsumerStatefulWidget {
   const _SavePreviewButton();
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_SavePreviewButton> createState() => _SavePreviewButtonState();
+}
+
+class _SavePreviewButtonState extends ConsumerState<_SavePreviewButton> {
+  bool _previewOpen = false;
+
+  @override
+  Widget build(BuildContext context) {
     final order = ref.watch(currentOrderProvider);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: FilledButton.icon(
-        onPressed: order.items.isEmpty ? null : () => _showOrderPreview(context, ref),
+        onPressed: order.items.isEmpty || order.isSubmitting || _previewOpen ? null : () async {
+          setState(() => _previewOpen = true);
+          try {
+            await _showOrderPreview(context, ref);
+          } finally {
+            if (mounted) setState(() => _previewOpen = false);
+          }
+        },
         icon: const Icon(Icons.save_outlined),
         label: Text(order.items.isEmpty ? 'Save' : 'Save (${order.items.length})'),
       ),
@@ -459,7 +475,7 @@ class _FoodGrid extends ConsumerWidget {
           itemCount: foods.length,
           itemBuilder: (context, index) {
             final food = foods[index];
-            final quantity = cartItems.where((item) => item.foodId == food.id).fold(0, (sum, item) => sum + item.quantity);
+            final quantity = cartItems.where((item) => item.foodId == food.id).fold<num>(0, (sum, item) => sum + item.quantity);
             return _FoodCard(food: food, quantity: quantity);
           },
         );
@@ -474,7 +490,7 @@ class _FoodCard extends ConsumerWidget {
   const _FoodCard({required this.food, required this.quantity});
 
   final Food food;
-  final int quantity;
+  final num quantity;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -535,7 +551,7 @@ class _FoodCard extends ConsumerWidget {
                   if (quantity > 0)
                     _FoodQuantityControls(
                       quantity: quantity,
-                      onRemove: () => controller.changeQuantity(food.id, -1),
+                      onRemove: () => controller.changeQuantity(food.id, -0.5),
                       onAdd: () => controller.addFood(food),
                     )
                   else
@@ -561,7 +577,7 @@ class _FoodQuantityControls extends StatelessWidget {
     required this.onAdd,
   });
 
-  final int quantity;
+  final num quantity;
   final VoidCallback onRemove;
   final VoidCallback onAdd;
 
@@ -587,7 +603,7 @@ class _FoodQuantityControls extends StatelessWidget {
           SizedBox(
             width: 28,
             child: Center(
-              child: Text('$quantity', style: const TextStyle(fontWeight: FontWeight.w800)),
+              child: Text(formatQuantity(quantity), style: const TextStyle(fontWeight: FontWeight.w800)),
             ),
           ),
           SizedBox.square(
@@ -708,13 +724,13 @@ class _OrderPreviewDialog extends ConsumerWidget {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(item.foodName, style: const TextStyle(fontWeight: FontWeight.w700)),
-                                Text('${item.quantity} x ؋${item.unitPrice.toStringAsFixed(2)}', style: TextStyle(color: scheme.onSurfaceVariant)),
+                                Text('${formatQuantity(item.quantity)} x ؋${item.unitPrice.toStringAsFixed(2)}', style: TextStyle(color: scheme.onSurfaceVariant)),
                               ],
                             ),
                           ),
                           _FoodQuantityControls(
                             quantity: item.quantity,
-                            onRemove: () => controller.changeQuantity(item.foodId, -1),
+                            onRemove: () => controller.changeQuantity(item.foodId, -0.5),
                             onAdd: () => controller.changeQuantity(item.foodId, 1),
                           ),
                           const SizedBox(width: 12),
@@ -818,8 +834,8 @@ class _OrderItemTile extends ConsumerWidget {
           ),
           Row(
             children: [
-              IconButton.filledTonal(onPressed: () => controller.changeQuantity(item.foodId, -1), icon: const Icon(Icons.remove)),
-              SizedBox(width: 36, child: Center(child: Text('${item.quantity}'))),
+              IconButton.filledTonal(onPressed: () => controller.changeQuantity(item.foodId, -0.5), icon: const Icon(Icons.remove)),
+              SizedBox(width: 36, child: Center(child: Text('${formatQuantity(item.quantity)}'))),
               IconButton.filledTonal(onPressed: () => controller.changeQuantity(item.foodId, 1), icon: const Icon(Icons.add)),
               const SizedBox(width: 8),
               Expanded(

@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'core/constants/app_config.dart';
 import 'core/logging/app_logger.dart';
+import 'core/widgets/device_gate.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
 import 'features/auth/providers/auth_providers.dart';
@@ -70,6 +71,7 @@ class RestaurantPosApp extends ConsumerWidget {
       theme: AppTheme.light(),
       darkTheme: AppTheme.dark(),
       routerConfig: router,
+      builder: (context, child) => DeviceGate(child: child ?? const SizedBox.shrink()),
       debugShowCheckedModeBanner: false,
     );
   }

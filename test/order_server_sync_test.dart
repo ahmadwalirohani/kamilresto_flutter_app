@@ -24,7 +24,7 @@ void main() {
           {
             'id': 10,
             'item_id': 2,
-            'quantity': saved ? '3.00' : '1.00',
+            'quantity': saved ? '2.50' : '1.00',
             'price': 50,
             'item': {'id': 2, 'name': food},
           },
@@ -75,12 +75,12 @@ void main() {
       expect(initial.createdAt.toUtc(), DateTime.utc(2026, 10, 10, 5));
       expect(initial.items.single.foodName, 'Soup');
       final updated = await repository.updateOrder(initial.copyWith(
-        items: [initial.items.single.copyWith(quantity: 3)],
+        items: [initial.items.single.copyWith(quantity: 2.5)],
       ));
       expect(updated.items.single.foodName, 'Updated soup');
-      expect(updated.items.single.quantity, 3);
+      expect(updated.items.single.quantity, 2.5);
       expect(reads, 2);
-      expect((await repository.getOrderById('1')).items.single.quantity, 3);
+      expect((await repository.getOrderById('1')).items.single.quantity, 2.5);
     },
   );
 }

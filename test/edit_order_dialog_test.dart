@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:kamilresto_flutter_app/core/api/api_client.dart';
 import 'package:kamilresto_flutter_app/features/order/models/food.dart';
 import 'package:kamilresto_flutter_app/features/order/models/order.dart';
+import 'package:kamilresto_flutter_app/features/order/models/restaurant_table.dart';
 import 'package:kamilresto_flutter_app/features/order/providers/restaurant_providers.dart';
 import 'package:kamilresto_flutter_app/features/order/repositories/restaurant_repository.dart';
 import 'package:kamilresto_flutter_app/features/orders/presentation/edit_order_dialog.dart';
@@ -72,6 +73,10 @@ void main() {
         overrides: [
           restaurantRepositoryProvider.overrideWithValue(repository),
           foodsProvider.overrideWith((ref) async => [food]),
+          tablesProvider.overrideWith((ref) async => [
+            const RestaurantTable(id: '1', name: 'Table 1', number: 1, status: TableStatus.occupied, capacity: 4),
+            const RestaurantTable(id: '2', name: 'Table 2', number: 2, status: TableStatus.available, capacity: 4),
+          ]),
           categoriesProvider.overrideWith(
             (ref) async => [
               const FoodCategory(id: '1', name: 'Soups'),
@@ -101,12 +106,20 @@ void main() {
     await tester.tap(find.text('Edit'));
     await tester.pumpAndSettle();
     expect(find.byIcon(Icons.lunch_dining_outlined), findsNWidgets(2));
+    await tester.tap(find.byType(DropdownButtonFormField<String>));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Table 2 - 2').last);
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Drinks'));
     await tester.pumpAndSettle();
     expect(find.byTooltip('Add Soup'), findsNothing);
     await tester.tap(find.text('Soups'));
     await tester.pumpAndSettle();
     await tester.tap(find.byTooltip('Add Soup'));
+    await tester.pump();
+    await tester.tap(find.byTooltip('Add Soup'));
+    await tester.pump();
+    await tester.tap(find.byTooltip('Decrease quantity').last);
     await tester.pump();
     await tester.tap(find.byTooltip('Add Soup'));
     await tester.pump();
@@ -126,7 +139,9 @@ void main() {
     await tester.pump();
     expect(find.text('Saving...'), findsOneWidget);
     expect(repository.saved!.items.single.foodId, '2');
-    expect(repository.saved!.items.single.quantity, 2);
+    expect(repository.saved!.tableId, '2');
+    expect(repository.saved!.tableName, 'Table 2');
+    expect(repository.saved!.items.single.quantity, 2.5);
     repository.response.completeError(const ApiException('Server unavailable'));
     await tester.pumpAndSettle();
     expect(find.text('Server unavailable'), findsOneWidget);
@@ -139,7 +154,7 @@ void main() {
     expect(find.byType(EditOrderDialog), findsNothing);
     final refreshed = await container.read(orderByIdProvider('#10').future);
     expect(refreshed.items.single.foodName, 'Soup');
-    expect(refreshed.items.single.quantity, 2);
+    expect(refreshed.items.single.quantity, 2.5);
     expect(repository.detailRequests, 2);
   });
 }

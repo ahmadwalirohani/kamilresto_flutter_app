@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/widgets/logs_button.dart';
 import 'edit_order_dialog.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -21,6 +22,7 @@ class OrdersScreen extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('Orders'),
         actions: [
+          const LogsButton(),
           IconButton(
             tooltip: 'Refresh',
             onPressed: () => ref.invalidate(ordersProvider),
@@ -270,7 +272,7 @@ class _OrderCard extends ConsumerWidget {
                           const SizedBox(height: 3),
                           Text('Order ${order.orderNumber}', style: const TextStyle(fontWeight: FontWeight.w700)),
                           const SizedBox(height: 3),
-                          Text('${order.guestCount} guests · ${order.itemCount} items', style: TextStyle(color: scheme.onSurfaceVariant)),
+                          Text('${order.guestCount} guests · ${formatQuantity(order.itemCount)} items', style: TextStyle(color: scheme.onSurfaceVariant)),
                         ],
                       ),
                     ),

@@ -5,6 +5,7 @@ import '../../../core/api/api_client.dart';
 import '../../../core/widgets/money_text.dart';
 import '../../order/models/food.dart';
 import '../../order/models/order.dart';
+import '../../order/models/restaurant_table.dart';
 import '../../order/providers/restaurant_providers.dart';
 
 class EditOrderDialog extends ConsumerStatefulWidget {
@@ -17,6 +18,8 @@ class EditOrderDialog extends ConsumerStatefulWidget {
 
 class _EditOrderDialogState extends ConsumerState<EditOrderDialog> {
   late List<OrderItem> _items;
+  late String _tableId;
+  late String _tableName;
   String _search = '';
   String? _categoryId;
   bool _saving = false;
@@ -26,6 +29,8 @@ class _EditOrderDialogState extends ConsumerState<EditOrderDialog> {
   void initState() {
     super.initState();
     _items = [...widget.order.items];
+    _tableId = widget.order.tableId;
+    _tableName = widget.order.tableName;
   }
 
   void _add(Food food) {
@@ -41,7 +46,7 @@ class _EditOrderDialogState extends ConsumerState<EditOrderDialog> {
     });
   }
 
-  void _change(int index, int delta) {
+  void _change(int index, num delta) {
     if (_items[index].quantity + delta <= 0) {
       _remove(_items[index]);
       return;
@@ -82,7 +87,8 @@ class _EditOrderDialogState extends ConsumerState<EditOrderDialog> {
     try {
       final updated = await ref
           .read(restaurantRepositoryProvider)
-          .updateOrder(widget.order.copyWith(items: [..._items]));
+          .updateOrder(widget.order.copyWith(items: [..._items], tableId: _tableId, tableName: _tableName));
+      ref.invalidate(tablesProvider);
       ref.invalidate(ordersProvider);
       ref.invalidate(orderByIdProvider);
       if (mounted) Navigator.of(context).pop(updated);
@@ -122,12 +128,12 @@ class _EditOrderDialogState extends ConsumerState<EditOrderDialog> {
                       Expanded(child: MoneyText(item.total)),
                       IconButton(
                         tooltip: 'Decrease quantity',
-                        onPressed: _saving ? null : () => _change(index, -1),
+                        onPressed: _saving ? null : () => _change(index, -0.5),
                         icon: const Icon(Icons.remove),
                       ),
                       SizedBox(
                         width: 32,
-                        child: Center(child: Text('${item.quantity}')),
+                        child: Center(child: Text('${formatQuantity(item.quantity)}')),
                       ),
                       IconButton(
                         tooltip: 'Increase quantity',
@@ -268,6 +274,34 @@ class _EditOrderDialogState extends ConsumerState<EditOrderDialog> {
           height: (size.height * .7).clamp(200.0, 650.0),
           child: Column(
             children: [
+              ref.watch(tablesProvider).when(
+                loading: () => const LinearProgressIndicator(),
+                error: (_, _) => Row(children: [
+                  Expanded(child: Text(_tableName)),
+                  TextButton.icon(onPressed: _saving ? null : () => ref.invalidate(tablesProvider), icon: const Icon(Icons.refresh), label: const Text('Retry tables')),
+                ]),
+                data: (tables) {
+                  final choices = <String, RestaurantTable>{for (final table in tables) table.id: table};
+                  return DropdownButtonFormField<String>(
+                    value: _tableId,
+                    isExpanded: true,
+                    decoration: const InputDecoration(labelText: 'Reservation Item', prefixIcon: Icon(Icons.table_restaurant)),
+                    items: [
+                      if (!choices.containsKey(_tableId)) DropdownMenuItem(value: _tableId, child: Text(_tableName, overflow: TextOverflow.ellipsis)),
+                      for (final table in choices.values) DropdownMenuItem(
+                        value: table.id,
+                        child: Text('${table.name} - ${table.number}', overflow: TextOverflow.ellipsis),
+                      ),
+                    ],
+                    onChanged: _saving ? null : (id) {
+                      if (id == null || !choices.containsKey(id)) return;
+                      final table = choices[id]!;
+                      setState(() { _tableId = table.id; _tableName = table.name; });
+                    },
+                  );
+                },
+              ),
+              const SizedBox(height: 12),
               Expanded(
                 child: LayoutBuilder(
                   builder: (context, constraints) {

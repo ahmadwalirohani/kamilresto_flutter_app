@@ -7,6 +7,8 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
+import android.provider.Settings
+import java.net.NetworkInterface
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
@@ -20,6 +22,29 @@ class MainActivity : FlutterActivity() {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "kamilresto/device")
+            .setMethodCallHandler { call, result ->
+                if (call.method != "info") {
+                    result.notImplemented()
+                } else {
+                    logWorker.execute {
+                        try {
+                            val id = Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID)
+                                ?: throw IllegalStateException("Device ID unavailable")
+                            val ip = NetworkInterface.getNetworkInterfaces().toList()
+                                .filter { it.isUp && !it.isLoopback }
+                                .flatMap { it.inetAddresses.toList() }
+                                .firstOrNull { it is java.net.Inet4Address && !it.isLoopbackAddress }
+                                ?.hostAddress ?: "0.0.0.0"
+                            val info = mapOf("device" to "${Build.MANUFACTURER} ${Build.MODEL}",
+                                "pid" to id, "mac" to "android:$id", "ip" to ip)
+                            runOnUiThread { result.success(info) }
+                        } catch (error: Exception) {
+                            runOnUiThread { result.error("DEVICE_INFO", error.toString(), null) }
+                        }
+                    }
+                }
+            }
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "kamilresto/public_logs")
             .setMethodCallHandler { call, result ->
                 when (call.method) {
@@ -48,6 +73,22 @@ class MainActivity : FlutterActivity() {
                             }
                         }
                     }
+                    "list", "read" -> logWorker.execute {
+                        try {
+                            val files = publicLogFiles()
+                            val value: Any = if (call.method == "list") files.keys.sortedDescending() else {
+                                val name = call.argument<String>("name")
+                                val location = files[name] ?: throw IllegalArgumentException("Log file not found")
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                                    contentResolver.openInputStream(android.net.Uri.parse(location))?.bufferedReader()?.use { it.readText() }
+                                        ?: throw IllegalStateException("Could not read log")
+                                } else File(location).readText()
+                            }
+                            runOnUiThread { result.success(value) }
+                        } catch (error: Exception) {
+                            runOnUiThread { result.error("LOG_READ_FAILED", error.toString(), null) }
+                        }
+                    }
                     else -> result.notImplemented()
                 }
             }
@@ -65,6 +106,7 @@ class MainActivity : FlutterActivity() {
             }
         }
     }
+
 
     private fun appendPublicLog(name: String, entry: String) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -95,6 +137,27 @@ class MainActivity : FlutterActivity() {
             }
             File(directory, name).appendText(entry, Charsets.UTF_8)
         }
+    }
+
+    private fun publicLogFiles(): Map<String, String> {
+        val files = mutableMapOf<String, String>()
+        val pattern = Regex("kamilresto-\\d{4}-\\d{2}-\\d{2}\\.log")
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val collection = MediaStore.Downloads.EXTERNAL_CONTENT_URI
+            contentResolver.query(collection,
+                arrayOf(MediaStore.Downloads._ID, MediaStore.Downloads.DISPLAY_NAME),
+                "${MediaStore.Downloads.RELATIVE_PATH} = ?", arrayOf(logPath), null)?.use { cursor ->
+                while (cursor.moveToNext()) {
+                    val name = cursor.getString(1)
+                    if (pattern.matches(name)) files[name] = ContentUris.withAppendedId(collection, cursor.getLong(0)).toString()
+                }
+            }
+        } else {
+            @Suppress("DEPRECATION")
+            val directory = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "KamilResto/logs")
+            directory.listFiles()?.filter { it.isFile && pattern.matches(it.name) }?.forEach { files[it.name] = it.absolutePath }
+        }
+        return files
     }
 
     override fun onDestroy() {

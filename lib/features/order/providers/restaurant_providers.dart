@@ -39,10 +39,12 @@ class CurrentOrderController extends StateNotifier<CurrentOrderState> {
   final Ref _ref;
 
   void selectTable(RestaurantTable table) {
+    if (state.isSubmitting) return;
     state = state.copyWith(selectedTable: table, guestCount: table.currentGuests > 0 ? table.currentGuests : state.guestCount, clearMessages: true);
   }
 
   void setGuestCount(int count) {
+    if (state.isSubmitting) return;
     state = state.copyWith(guestCount: count.clamp(1, 24), clearMessages: true);
   }
 
@@ -55,6 +57,7 @@ class CurrentOrderController extends StateNotifier<CurrentOrderState> {
   }
 
   void addFood(Food food) {
+    if (state.isSubmitting) return;
     if (!food.isAvailable) return;
     final existingIndex = state.items.indexWhere((item) => item.foodId == food.id);
     final items = [...state.items];
@@ -67,7 +70,8 @@ class CurrentOrderController extends StateNotifier<CurrentOrderState> {
     state = state.copyWith(items: items, clearMessages: true);
   }
 
-  void changeQuantity(String foodId, int delta) {
+  void changeQuantity(String foodId, num delta) {
+    if (state.isSubmitting) return;
     final items = state.items
         .map((item) => item.foodId == foodId ? item.copyWith(quantity: item.quantity + delta) : item)
         .where((item) => item.quantity > 0)
@@ -76,23 +80,28 @@ class CurrentOrderController extends StateNotifier<CurrentOrderState> {
   }
 
   void removeItem(String foodId) {
+    if (state.isSubmitting) return;
     state = state.copyWith(items: state.items.where((item) => item.foodId != foodId).toList(), clearMessages: true);
   }
 
   void updateItemNotes(String foodId, String notes) {
+    if (state.isSubmitting) return;
     final items = state.items.map((item) => item.foodId == foodId ? item.copyWith(notes: notes) : item).toList();
     state = state.copyWith(items: items, clearMessages: true);
   }
 
   void setGeneralNotes(String notes) {
+    if (state.isSubmitting) return;
     state = state.copyWith(generalNotes: notes, clearMessages: true);
   }
 
   void clearOrder() {
+    if (state.isSubmitting) return;
     state = const CurrentOrderState();
   }
 
   Future<Order?> submitOrder() async {
+    if (state.isSubmitting) return null;
     final table = state.selectedTable;
     final user = _ref.read(authControllerProvider).user;
     if (table == null) {

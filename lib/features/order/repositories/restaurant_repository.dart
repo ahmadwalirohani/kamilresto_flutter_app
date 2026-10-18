@@ -5,6 +5,7 @@ import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/api/api_client.dart';
+import '../../../core/logging/app_logger.dart';
 
 import '../../auth/models/user.dart';
 import '../models/food.dart';
@@ -489,6 +490,9 @@ class ApiRestaurantRepository implements RestaurantRepository {
       throw ApiException(readableApiError(error));
     }
     final saved = await getOrderById('$orderId');
+    if (saved.tableId != order.tableId) {
+      throw const ApiException('The server did not save the reservation item. Refresh the order and try again.');
+    }
     final quantities = {for (final item in saved.items) item.foodId: item.quantity};
     if (saved.items.length != order.items.length ||
         order.items.any((item) => quantities[item.foodId] != item.quantity)) {
@@ -509,13 +513,35 @@ class ApiRestaurantRepository implements RestaurantRepository {
   }) async {
     final now = DateTime.now();
     final orderNumber = await _nextOrderNumber();
-    await _dio.post<dynamic>(
+    final signature = jsonEncode({
+      'server': _dio.options.baseUrl,
+      'waiter': waiter.id,
+      'table': table.id,
+      'guests': guestCount,
+      'items': items.map((item) => item.toJson()).toList(),
+      'notes': notes,
+    });
+    const pendingKey = 'pending_order_creation';
+    final previous = _prefs.getString(pendingKey);
+    final pending = previous == null ? null : jsonDecode(previous) as Map;
+    final requestId = pending?['signature'] == signature
+        ? pending!['requestId'] as String
+        : List.generate(32, (_) => Random.secure().nextInt(256).toRadixString(16).padLeft(2, '0')).join();
+    await _prefs.setString(pendingKey, jsonEncode({
+      'signature': signature, 'requestId': requestId,
+    }));
+    AppLogger.write('order_creation', 'Submitting order', details: {
+      'requestId': requestId, 'waiterId': waiter.id, 'tableId': table.id,
+      'items': items.map((item) => {'id': item.foodId, 'quantity': item.quantity}).toList(),
+    });
+    final response = await _dio.post<dynamic>(
       _actionPath,
       data: _actionPayload(
         actionClass: 'POSActions',
         methodName: 'store_new_order',
         validationClass: 'CreateOrderRequest',
         payload: {
+          'client_request_id': requestId,
           'order_id': orderNumber,
           'r_items': [
             {'id': int.tryParse(table.id) ?? table.id, 'price': 0},
@@ -536,10 +562,13 @@ class ApiRestaurantRepository implements RestaurantRepository {
         },
       ),
     );
+    await _prefs.remove(pendingKey);
+    final data = response.data is Map ? response.data as Map : const {};
+    final savedOrderNo = data['created_order_no'] ?? orderNumber;
 
     return Order(
-      id: 'api-$orderNumber',
-      orderNumber: '#$orderNumber',
+      id: '${data['created_order_id'] ?? 'api-$savedOrderNo'}',
+      orderNumber: '#$savedOrderNo',
       tableId: table.id,
       tableName: table.name,
       waiterId: waiter.id,
@@ -639,7 +668,7 @@ class ApiRestaurantRepository implements RestaurantRepository {
       id: '${detail['id']}',
       foodId: '${detail['item_id'] ?? item['id'] ?? ''}',
       foodName: item['name'] as String? ?? 'Item',
-      quantity: num.tryParse('${detail['quantity'] ?? 1}')?.toInt() ?? 1,
+      quantity: num.tryParse('${detail['quantity'] ?? 1}') ?? 1,
       unitPrice:
           double.tryParse('${detail['price'] ?? price['price'] ?? 0}') ?? 0,
       image: item['image'] as String?,

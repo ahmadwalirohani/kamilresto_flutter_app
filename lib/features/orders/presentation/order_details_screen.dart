@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/widgets/logs_button.dart';
 import 'edit_order_dialog.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -26,6 +27,7 @@ class OrderDetailsScreen extends ConsumerWidget {
         ),
         title: const Text('Order Details'),
         actions: [
+          const LogsButton(),
           IconButton(
             tooltip: 'Refresh order',
             onPressed: () => ref.invalidate(orderByIdProvider(orderId)),
@@ -96,7 +98,7 @@ class _ItemRow extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(width: 36, child: Text('${item.quantity}x', style: const TextStyle(fontWeight: FontWeight.w700))),
+          SizedBox(width: 36, child: Text('${formatQuantity(item.quantity)}x', style: const TextStyle(fontWeight: FontWeight.w700))),
           _ItemImage(image: item.image),
           const SizedBox(width: 10),
           Expanded(

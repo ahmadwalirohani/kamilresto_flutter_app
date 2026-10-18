@@ -1,5 +1,9 @@
 import 'food.dart';
 
+String formatQuantity(num value) => value == value.truncateToDouble()
+    ? value.toInt().toString()
+    : value.toString();
+
 enum OrderStatus { draft, newOrder, preparing, ready, served, completed, cancelled }
 
 extension OrderStatusLabel on OrderStatus {
@@ -37,7 +41,7 @@ class OrderItem {
   final String id;
   final String foodId;
   final String foodName;
-  final int quantity;
+  final num quantity;
   final double unitPrice;
   final String notes;
   final String? image;
@@ -54,7 +58,7 @@ class OrderItem {
     );
   }
 
-  OrderItem copyWith({int? quantity, String? notes, String? image}) {
+  OrderItem copyWith({num? quantity, String? notes, String? image}) {
     return OrderItem(
       id: id,
       foodId: foodId,
@@ -71,7 +75,7 @@ class OrderItem {
       id: '${json['id']}',
       foodId: '${json['foodId'] ?? json['food_id']}',
       foodName: json['foodName'] as String? ?? json['food_name'] as String? ?? '',
-      quantity: json['quantity'] as int? ?? 1,
+      quantity: num.tryParse('${json['quantity'] ?? 1}') ?? 1,
       unitPrice: (json['unitPrice'] as num? ?? json['unit_price'] as num?)?.toDouble() ?? 0,
       notes: json['notes'] as String? ?? '',
       image: json['image'] as String?,
@@ -142,7 +146,7 @@ class Order {
   double get tax => subtotal * .05;
   double get serviceCharge => subtotal * .03;
   double get total => subtotal - discount + tax + serviceCharge;
-  int get itemCount => items.fold(0, (sum, item) => sum + item.quantity);
+  num get itemCount => items.fold<num>(0, (sum, item) => sum + item.quantity);
 
   Order copyWith({
     String? id,
